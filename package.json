@@ -1,0 +1,23 @@
+{
+  "name": "dashboard-for-nspanelpro",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Standalone Homey dashboard optimized for the Sonoff NSPanel Pro (480x480).",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "start": "node server.js",
+    "serve": "vite build && node server.js"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "svelte": "^5.56.9",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "homey-api": "^3.17.3",
+    "qrcode-generator": "^2.0.4"
+  }
+}

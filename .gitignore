@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+*.local
+.playwright-mcp
+# a data/ tartalma nem verziókövetett (state.json = Homey token + BKK kulcs)
+data/

@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=480, height=480, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Homey Dashboard — 4×4 rács & widget-méretek</title>
+<style>
+  :root{
+    --bg:#0c0c0e;--card:#1b1b1f;--card-2:#232329;--line:#2f2f36;
+    --txt:#f4f4f6;--txt-dim:#9a9aa4;--txt-mute:#6c6c76;
+    --amber:#ffb84d;--amber-soft:rgba(255,184,77,.16);
+    --blue:#4c8dff;--blue-soft:rgba(76,141,255,.16);
+    --teal:#37d3b0;--radius:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:480px;height:480px;overflow:hidden;background:#000;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--txt)}
+  .frame{position:relative;width:480px;height:480px;background:var(--bg);overflow:hidden}
+  .pager{display:flex;width:480px;height:480px;touch-action:pan-y;will-change:transform;transform:translateX(0)}
+  .pager.animate{transition:transform .34s cubic-bezier(.22,.61,.36,1)}
+  .page{flex:0 0 480px;width:480px;height:480px;padding:12px 12px 26px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+  .ptitle{display:flex;align-items:center;justify-content:space-between;padding:0 2px}
+  .ptitle h1{font-size:14px;font-weight:600}
+  .ptitle .k{font-size:11px;color:var(--txt-mute)}
+
+  /* 4×4 rács + rácsvonalak */
+  .gw{position:relative;flex:1}
+  .guides,.grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:8px}
+  .guides>div{border:1px dashed rgba(255,255,255,.07);border-radius:12px}
+  .gi{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;min-width:0;min-height:0}
+  .badge{position:absolute;top:7px;right:7px;z-index:5;font-size:10px;font-weight:600;
+    background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.14);color:#e7e7ec;
+    padding:2px 6px;border-radius:8px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+  .cap{position:absolute;left:8px;bottom:7px;font-size:10px;color:var(--txt-mute)}
+
+  /* ---- Weather ---- */
+  .wxc{padding:11px 12px;display:flex;flex-direction:column;gap:6px}
+  .wxc.row{flex-direction:row;align-items:center;gap:14px}
+  .wxcur{flex:0 0 auto;display:flex;flex-direction:column;min-width:0}
+  .wxc.row .wxf{flex:1;margin-top:0}
+  .wx-temp{font-weight:300;letter-spacing:-1px;line-height:1}
+  .wx-cond{font-size:12px;color:var(--txt-dim)}
+  .wx-loc{font-size:11px;color:var(--txt-mute)}
+  .wxrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .wxdet{display:flex;flex-direction:column;gap:7px;margin-top:2px}
+  .wxdet .d{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--txt-dim);
+    border-top:1px solid var(--line);padding-top:7px}
+  .wxdet .d b{color:var(--txt);font-weight:600}
+  .wxf{display:flex;gap:5px;margin-top:auto}
+  .wxf .day{flex:1;background:var(--card-2);border-radius:10px;padding:6px 2px;text-align:center;min-width:0}
+  .wxf .day .dd{font-size:9px;color:var(--txt-dim);text-transform:uppercase}
+  .wxf .day svg{margin:3px auto 2px;display:block}
+  .wxf .day .hi{font-size:11px;font-weight:600}
+  .wxf .day .lo{font-size:10px;color:var(--txt-mute);margin-left:1px}
+  .wxmini{display:flex;gap:16px;flex-wrap:wrap;margin-top:2px}
+  .wxmini .m{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt-dim)}
+  .wxmini .m svg{width:14px;height:14px;color:var(--txt-mute)}
+  .wxmini .m b{color:var(--txt);font-weight:600}
+  .wxdet2{display:grid;grid-template-columns:1fr 1fr;gap:0 22px;margin-top:8px}
+  .wxdet2 .di{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt-dim);border-top:1px solid var(--line);padding:7px 0}
+  .wxdet2 .di svg{width:15px;height:15px;color:var(--txt-mute);flex:0 0 auto}
+  .wxdet2 .di b{margin-left:auto;color:var(--txt);font-weight:600}
+
+  /* ---- Slider group (vízszintes) ---- */
+  .hcard{padding:10px 13px 11px;display:flex;flex-direction:column}
+  .ghead{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;padding-right:46px}
+  .gtitle{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+  .gtitle svg{width:17px;height:17px}
+  .ghint{font-size:10px;color:var(--txt-mute)}
+  .slist{display:flex;flex-direction:column;justify-content:space-evenly;flex:1}
+  .slrow{display:flex;flex-direction:column;gap:4px}
+  .slrow .l{display:flex;align-items:center;justify-content:space-between;font-size:11px}
+  .slrow .l .nm{color:var(--txt-dim)}.slrow .l .pc{color:var(--txt);font-variant-numeric:tabular-nums}
+  .slist{gap:4px}
+  .trk{position:relative;height:18px;border-radius:7px;background:var(--card-2);overflow:hidden}
+  .trk .f{position:absolute;left:0;top:0;bottom:0;border-radius:7px;display:flex;align-items:center;justify-content:flex-end}
+  .trk .f .g{width:3px;height:10px;border-radius:2px;background:rgba(255,255,255,.9);margin-right:6px}
+
+  /* ---- Slider group (függőleges) ---- */
+  .vcard{padding:24px 11px 9px;display:flex;flex-direction:column}
+  .vlist{display:flex;gap:7px;flex:1;margin-top:2px}
+  .vcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+  .vcol .vv{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+  .vtrk{position:relative;width:18px;flex:1;min-height:36px;border-radius:7px;background:var(--card-2);overflow:hidden}
+  .vtrk .vf{position:absolute;left:0;right:0;bottom:0;border-radius:7px}
+  .vtrk .vic{position:absolute;left:50%;transform:translateX(-50%);bottom:5px}
+  .vtrk .vic svg{width:13px;height:13px}
+  .vcol .vcap{font-size:9px;color:var(--txt-mute);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .amberfill{background:linear-gradient(90deg,#8a5a12,var(--amber))}
+  .amberfill-v{background:linear-gradient(0deg,#8a5a12,var(--amber))}
+  .bluefill{background:linear-gradient(90deg,#254a86,var(--blue))}
+  .bluefill-v{background:linear-gradient(0deg,#254a86,var(--blue))}
+  .tealfill{background:linear-gradient(90deg,#1c6f5e,var(--teal))}
+  .tealfill-v{background:linear-gradient(0deg,#1c6f5e,var(--teal))}
+  .ic-amber{color:var(--amber)}.ic-blue{color:var(--blue)}.ic-teal{color:var(--teal)}
+
+  /* ---- Thermostat dial ---- */
+  .thermo{display:flex;flex-direction:column;padding:9px 10px}
+  .tlabel{font-size:12px;font-weight:600;color:var(--txt-dim);margin:0 2px 2px}
+  .dialwrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+  .dial{position:relative;width:100%;aspect-ratio:1}
+  .dial svg{width:100%;height:100%;display:block;overflow:visible}
+  .dial .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transform:translateY(-6%)}
+  .dial .big{font-weight:700;letter-spacing:-1px;color:#fff;line-height:1}
+  .dial .small{font-weight:700;color:#bdbdc6}
+  .dial.lg{max-width:330px}
+  .dial.lg .big{font-size:58px}.dial.lg .small{font-size:22px;margin-top:9px}
+  .dial.sm{max-width:170px}
+  .dial.sm .big{font-size:30px}.dial.sm .small{font-size:14px;margin-top:5px}
+
+  /* ---- Buttons ---- */
+  .btile{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);position:relative;
+    display:flex;align-items:center;gap:11px;padding:0 14px;overflow:hidden}
+  .btile.col{flex-direction:column;justify-content:center;gap:6px;text-align:center;padding:10px}
+  .btile .bic{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--card-2);color:var(--txt-dim);flex:0 0 auto}
+  .btile .bl{font-size:13px;font-weight:600}
+  .btile .bs{font-size:11px;color:var(--txt-mute)}
+  .btile.on{background:linear-gradient(160deg,#2a2418,#1f1c17);border-color:rgba(255,184,77,.35)}
+  .btile.on .bic{background:var(--amber-soft);color:var(--amber)}.btile.on .bs{color:var(--amber)}
+  .btile.onb{background:linear-gradient(160deg,#182130,#171b22);border-color:rgba(76,141,255,.35)}
+  .btile.onb .bic{background:var(--blue-soft);color:var(--blue)}.btile.onb .bs{color:var(--blue)}
+  .btile.flow .bic{background:var(--blue-soft);color:var(--blue)}
+
+  /* ---- Chart (könnyű inline-SVG, nincs külső lib) ---- */
+  .chart{padding:9px 12px 11px;display:flex;flex-direction:column;gap:6px}
+  .chd{font-size:12px;font-weight:600;color:var(--txt-dim)}
+  .chart-body{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .chart-body.row{flex-direction:row;align-items:center;gap:18px}
+  .chart-body>svg{width:100%;height:100%;min-height:0;display:block}
+  .chart-body.row .chsvg{flex:1;height:100%;min-width:0;display:flex;align-items:center;justify-content:center}
+  .chart-body.row .chsvg svg{width:100%;height:100%}
+  .chart-body .lcbox{flex:1;width:100%;min-height:0;display:flex}
+  .chleg{display:flex;flex-direction:column;gap:7px;min-width:0}
+  .chleg.row{flex-direction:row;flex-wrap:wrap;gap:6px 16px;justify-content:center;flex:0 0 auto}
+  .chleg .li{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt-dim);white-space:nowrap}
+  .chleg .li .dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+  .chleg .li b{margin-left:auto;color:var(--txt);font-weight:600;padding-left:12px}
+  .chleg .li.hl{color:#6fd98c}
+  .chleg .li.hl b{color:#6fd98c}
+
+  .pcount{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:11px;color:var(--txt-mute);
+    font-variant-numeric:tabular-nums;pointer-events:none}
+  .pcount b{color:var(--txt)}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="pager" id="pager">
+
+    <!-- P1: Időjárás 4×2 (7 napos) + 2×2 (3 napos) -->
+    <section class="page">
+      <div class="ptitle"><h1>Időjárás — 4×2 és 2×2</h1><span class="k">4×4 rács</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi wxc" style="grid-column:1/5;grid-row:1/3"><span class="badge">4×2</span>
+          <div class="wxrow" style="justify-content:flex-start;gap:14px">
+            <div class="wx-temp" style="font-size:40px">21°</div>
+            <span data-ic="partly" data-sz="42"></span>
+            <div><div class="wx-cond">Részben felhős</div><div class="wx-loc">Budapest</div></div>
+          </div>
+          <div class="wxmini">
+            <div class="m"><span data-ic="umbrella"></span>Eső esély <b>20%</b></div>
+            <div class="m"><span data-ic="wind"></span>Szél <b>12 km/h</b></div>
+            <div class="m"><span data-ic="droplet"></span>Pára <b>62%</b></div>
+          </div>
+          <div class="wxf" data-fc="7"></div>
+        </div>
+        <div class="gi wxc" style="grid-column:1/3;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="wxrow"><div class="wx-temp" style="font-size:32px">21°</div><span data-ic="partly" data-sz="36"></span></div>
+          <div class="wx-cond">Részben felhős</div>
+          <div class="wxf" data-fc="3"></div>
+        </div>
+        <div class="gi wxc" style="grid-column:3/5;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="wxrow"><div class="wx-temp" style="font-size:32px">19°</div><span data-ic="rain" data-sz="36"></span></div>
+          <div class="wx-cond">Eső</div>
+          <div class="wxf" data-fc="3"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P2: Időjárás 4×4 -->
+    <section class="page">
+      <div class="ptitle"><h1>Időjárás — 4×4</h1><span class="k">teljes oldal</span></div>
+      <div class="gw"><div class="grid" style="grid-template-rows:1fr">
+        <div class="gi wxc" style="grid-column:1/5;grid-row:1/5;padding:16px 18px"><span class="badge">4×4</span>
+          <div class="wxrow"><div><div class="wx-temp" style="font-size:60px">21°</div><div class="wx-cond" style="font-size:14px">Részben felhős</div><div class="wx-loc">Budapest</div></div><span data-ic="partly" data-sz="86"></span></div>
+          <div class="wxf" data-fc="7" style="margin-top:2px"></div>
+          <div class="wxdet2">
+            <div class="di"><span data-ic="droplet"></span>Páratartalom <b>62%</b></div>
+            <div class="di"><span data-ic="wind"></span>Szél <b>12 km/h</b></div>
+            <div class="di"><span data-ic="umbrella"></span>Eső esély <b>20%</b></div>
+            <div class="di"><span data-ic="gauge"></span>Légnyomás <b>1014 hPa</b></div>
+            <div class="di"><span data-ic="sun"></span>UV index <b>4 (mérsékelt)</b></div>
+            <div class="di"><span data-ic="sunrise"></span>Napkelte <b>05:42</b></div>
+          </div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P3: Termosztát 2×2 -->
+    <section class="page">
+      <div class="ptitle"><h1>Termosztát — 2×2</h1><span class="k">4×4 rács</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi thermo" style="grid-column:1/3;grid-row:1/3"><span class="badge">2×2</span>
+          <div class="tlabel">Nappali</div><div class="dialwrap"><div class="dial sm needdial" data-cur="22.4" data-tgt="23.0"></div></div></div>
+        <div class="gi thermo" style="grid-column:3/5;grid-row:1/3"><span class="badge">2×2</span>
+          <div class="tlabel">Háló</div><div class="dialwrap"><div class="dial sm needdial" data-cur="21.5" data-tgt="22.0"></div></div></div>
+        <div class="gi thermo" style="grid-column:1/3;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="tlabel">Gyerekszoba</div><div class="dialwrap"><div class="dial sm needdial" data-cur="20.5" data-tgt="21.0"></div></div></div>
+        <div class="gi thermo" style="grid-column:3/5;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="tlabel">Fürdő</div><div class="dialwrap"><div class="dial sm needdial" data-cur="23.2" data-tgt="24.0"></div></div></div>
+      </div></div>
+    </section>
+
+    <!-- P4: Termosztát 4×4 -->
+    <section class="page">
+      <div class="ptitle"><h1>Termosztát — 4×4</h1><span class="k">teljes oldal</span></div>
+      <div class="gw"><div class="grid" style="grid-template-rows:1fr">
+        <div class="gi thermo" style="grid-column:1/5;grid-row:1/5"><span class="badge">4×4</span>
+          <div class="tlabel" style="font-size:14px">Nappali</div>
+          <div class="dialwrap"><div class="dial lg needdial" data-cur="24.0" data-tgt="24.4"></div></div></div>
+      </div></div>
+    </section>
+
+    <!-- P5: Vízszintes 4×1 + 4×3 -->
+    <section class="page">
+      <div class="ptitle"><h1>Vízszintes csúszka — 4×1 és 4×3</h1><span class="k">eszközszám</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi hcard" style="grid-column:1/5;grid-row:1/2"><span class="badge">4×1</span>
+          <div class="ghead"><div class="gtitle"><span class="ic-amber" data-ic="bulb"></span> Világítás</div><div class="ghint">1 eszköz</div></div>
+          <div class="slist" data-hn="1" data-fill="amberfill"></div>
+        </div>
+        <div class="gi hcard" style="grid-column:1/5;grid-row:2/5"><span class="badge">4×3</span>
+          <div class="ghead"><div class="gtitle"><span class="ic-amber" data-ic="bulb"></span> Világítás</div><div class="ghint">6 eszköz</div></div>
+          <div class="slist" data-hn="6" data-fill="amberfill"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P6: Vízszintes 4×2 -->
+    <section class="page">
+      <div class="ptitle"><h1>Vízszintes csúszka — 4×2</h1><span class="k">4 eszköz / kártya</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi hcard" style="grid-column:1/5;grid-row:1/3"><span class="badge">4×2</span>
+          <div class="ghead"><div class="gtitle"><span class="ic-blue" data-ic="blind"></span> Árnyékolás</div><div class="ghint">csak elengedéskor küld</div></div>
+          <div class="slist" data-hn="4" data-fill="bluefill"></div>
+        </div>
+        <div class="gi hcard" style="grid-column:1/5;grid-row:3/5"><span class="badge">4×2</span>
+          <div class="ghead"><div class="gtitle"><span class="ic-teal" data-ic="speaker"></span> Hangerő</div><div class="ghint">4 eszköz</div></div>
+          <div class="slist" data-hn="4" data-fill="tealfill"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P7: Vízszintes 4×4 -->
+    <section class="page">
+      <div class="ptitle"><h1>Vízszintes csúszka — 4×4</h1><span class="k">8 eszköz</span></div>
+      <div class="gw"><div class="grid" style="grid-template-rows:1fr">
+        <div class="gi hcard" style="grid-column:1/5;grid-row:1/5"><span class="badge">4×4</span>
+          <div class="ghead"><div class="gtitle"><span class="ic-amber" data-ic="bulb"></span> Világítás</div><div class="ghint">8 eszköz</div></div>
+          <div class="slist" data-hn="8" data-fill="amberfill"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P8: Függőleges 1×4 + 3×4 -->
+    <section class="page">
+      <div class="ptitle"><h1>Függőleges csúszka — 1×4 és 3×4</h1><span class="k">eszközszám</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi vcard" style="grid-column:1/2;grid-row:1/5"><span class="badge">1×4</span>
+          <div class="vlist" data-vn="2"></div></div>
+        <div class="gi vcard" style="grid-column:2/5;grid-row:1/5"><span class="badge">3×4</span>
+          <div class="vlist" data-vn="6"></div></div>
+      </div></div>
+    </section>
+
+    <!-- P9: Függőleges 2×4 -->
+    <section class="page">
+      <div class="ptitle"><h1>Függőleges csúszka — 2×4</h1><span class="k">4 eszköz / kártya</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi vcard" style="grid-column:1/3;grid-row:1/5"><span class="badge">2×4</span>
+          <div class="vlist" data-vn="4"></div></div>
+        <div class="gi vcard" style="grid-column:3/5;grid-row:1/5"><span class="badge">2×4</span>
+          <div class="vlist" data-vn="4" data-off="4"></div></div>
+      </div></div>
+    </section>
+
+    <!-- P10: Függőleges 4×4 -->
+    <section class="page">
+      <div class="ptitle"><h1>Függőleges csúszka — 4×4</h1><span class="k">8 eszköz</span></div>
+      <div class="gw"><div class="grid" style="grid-template-rows:1fr">
+        <div class="gi vcard" style="grid-column:1/5;grid-row:1/5"><span class="badge">4×4</span>
+          <div class="vlist" data-vn="8"></div></div>
+      </div></div>
+    </section>
+
+    <!-- P11: Gombok -->
+    <section class="page">
+      <div class="ptitle"><h1>Gomb — 1×1, 2×1, 3×1, 4×1, 2×2</h1><span class="k">4×4 rács</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi btile on" style="grid-column:1/5;grid-row:1/2"><span class="badge">4×1</span>
+          <div class="bic" data-ic="bulb"></div><div><div class="bl">Összes lámpa</div><div class="bs">Bekapcsolva</div></div></div>
+        <div class="gi btile col" style="grid-column:1/2;grid-row:2/3"><span class="badge">1×1</span>
+          <div class="bic" data-ic="fan"></div><div class="bl">Vent.</div></div>
+        <div class="gi btile flow" style="grid-column:2/5;grid-row:2/3"><span class="badge">3×1</span>
+          <div class="bic" data-ic="flow"></div><div><div class="bl">Jó éjt</div><div class="bs">Flow indítása</div></div></div>
+        <div class="gi btile col onb" style="grid-column:1/3;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="bic" data-ic="lock"></div><div class="bl">Bejárat</div><div class="bs">Zárva</div></div>
+        <div class="gi btile onb" style="grid-column:3/5;grid-row:3/4"><span class="badge">2×1</span>
+          <div class="bic" data-ic="power"></div><div><div class="bl">Konnektor</div><div class="bs">Be</div></div></div>
+        <div class="gi btile flow" style="grid-column:3/5;grid-row:4/5"><span class="badge">2×1</span>
+          <div class="bic" data-ic="away"></div><div><div class="bl">Távozás</div><div class="bs">Flow</div></div></div>
+      </div></div>
+    </section>
+
+    <!-- P12: Grafikon 2×2 -->
+    <section class="page">
+      <div class="ptitle"><h1>Grafikon — 2×2</h1><span class="k">torta · fánk · vonal</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi chart" style="grid-column:1/3;grid-row:1/3"><span class="badge">2×2</span>
+          <div class="chd">Eszközök fogyasztása</div>
+          <div class="chart-body" data-chart="pie" data-vals="35,25,20,12,8" data-size="110"></div>
+        </div>
+        <div class="gi chart" style="grid-column:3/5;grid-row:1/3"><span class="badge">2×2</span>
+          <div class="chd">Helyiségek · össz</div>
+          <div class="chart-body" data-chart="donut" data-vals="18,12,10,8" data-size="110" data-center="48 kWh" data-highlight="1"></div>
+        </div>
+        <div class="gi chart" style="grid-column:1/3;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="chd">Napi fogyasztás</div>
+          <div class="chart-body" data-chart="line" data-series="8,10,7,12,9,14,11" data-fill="1"></div>
+        </div>
+        <div class="gi chart" style="grid-column:3/5;grid-row:3/5"><span class="badge">2×2</span>
+          <div class="chd">Hőmérséklet · 24ó</div>
+          <div class="chart-body" data-chart="line" data-series="20,21,21,22,23,22,21,20" data-fill="1"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P13: Grafikon 4×2 -->
+    <section class="page">
+      <div class="ptitle"><h1>Grafikon — 4×2</h1><span class="k">vonal + fánk</span></div>
+      <div class="gw"><div class="guides" data-guides></div><div class="grid">
+        <div class="gi chart" style="grid-column:1/5;grid-row:1/3"><span class="badge">4×2</span>
+          <div class="chd">Heti fogyasztás — Nappali vs Konyha</div>
+          <div class="chart-body" data-chart="line" data-series="8,10,7,12,9,14,11;5,6,5,7,8,6,7" data-labels="Nappali,Konyha" data-legend="1"></div>
+        </div>
+        <div class="gi chart" style="grid-column:1/5;grid-row:3/5"><span class="badge">4×2</span>
+          <div class="chd">Helyiségek össz fogyasztása</div>
+          <div class="chart-body" data-chart="donut" data-vals="18,12,10,8" data-labels="Nappali,Konyha,Háló,Fürdő" data-unit=" kWh" data-legend="1" data-size="118" data-center="48" data-highlight="0"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P14: Grafikon 4×4 (torta/fánk, összehasonlítás) -->
+    <section class="page">
+      <div class="ptitle"><h1>Grafikon — 4×4 · torta/fánk</h1><span class="k">összehasonlítás</span></div>
+      <div class="gw"><div class="grid" style="grid-template-rows:1fr">
+        <div class="gi chart" style="grid-column:1/5;grid-row:1/5"><span class="badge">4×4</span>
+          <div class="chd">Helyiségek össz fogyasztása — havi</div>
+          <div class="chart-body row" data-chart="donut" data-vals="42,31,24,18,12,9" data-labels="Nappali,Konyha,Háló,Fürdő,Dolgozó,Előszoba" data-unit=" kWh" data-legend="1" data-size="196" data-full="1" data-hl-label="Nappali" data-hl-value="42 kWh" data-total="136 kWh" data-highlight="0"></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- P15: Grafikon 4×4 (vonal, idősor) -->
+    <section class="page">
+      <div class="ptitle"><h1>Grafikon — 4×4 · vonal</h1><span class="k">Insight idősor</span></div>
+      <div class="gw"><div class="grid" style="grid-template-rows:1fr">
+        <div class="gi chart" style="grid-column:1/5;grid-row:1/5"><span class="badge">4×4</span>
+          <div class="chd">Fogyasztás — 7 nap (helyiségenként)</div>
+          <div class="chart-body" data-chart="line" data-series="8,10,7,12,9,14,11;5,6,5,7,8,6,7;3,4,4,5,4,6,5" data-labels="Nappali,Konyha,Háló" data-legend="1" data-axis="1"></div>
+        </div>
+      </div></div>
+    </section>
+
+  </div>
+  <div class="pcount"><b id="pc">1</b> / <span id="pt">11</span></div>
+</div>
+
+<script>
+const S=(p,{w=24,h=24,sw=1.8}={})=>`<svg width="${w}" height="${h}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICONS={
+  bulb:`<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2H14.5c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3Z"/>`,
+  'bulb-sm':`<path d="M9.5 18.5h5M10.5 21h3"/><path d="M12 4a5 5 0 0 0-3 9c.5.4.8 1 .9 1.6h4.2c.1-.6.4-1.2.9-1.6A5 5 0 0 0 12 4Z"/>`,
+  speaker:`<rect x="7" y="3" width="10" height="18" rx="2.5"/><circle cx="12" cy="14" r="3"/><circle cx="12" cy="7" r="1"/>`,
+  'speaker-sm':`<rect x="8" y="4" width="8" height="16" rx="2"/><circle cx="12" cy="13" r="2.4"/><circle cx="12" cy="7.5" r=".9"/>`,
+  blind:`<rect x="4" y="4" width="16" height="4" rx="1"/><path d="M6 8v8M18 8v8M12 8v6M8 12h8M8 16h8"/>`,
+  'blind-sm':`<rect x="5" y="4" width="14" height="3.5" rx="1"/><path d="M12 8v6M7.5 12h9M7.5 15.5h9"/>`,
+  flow:`<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 6H14a3 3 0 0 1 3 3v6.5"/>`,
+  lock:`<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>`,
+  fan:`<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c0-3 .4-5.4-1.5-6.2C8.2 3.3 7 6 8.5 8.2M13.6 12c3 0 5.4.4 6.2-1.5.9-2.3-1.8-3.5-4-2M12 13.6c0 3-.4 5.4 1.5 6.2 2.3.9 3.5-1.8 2-4"/>`,
+  power:`<path d="M12 4v7M7.5 7a7 7 0 1 0 9 0"/>`,
+  away:`<path d="M14 21V5a2 2 0 0 0-2-2H6v18M14 12h6M17 9l3 3-3 3"/>`,
+  sun:`<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>`,
+  droplet:`<path d="M12 3.5s5.5 6 5.5 10a5.5 5.5 0 0 1-11 0c0-4 5.5-10 5.5-10Z"/>`,
+  wind:`<path d="M3 8h10a2.5 2.5 0 1 0-2.5-2.5M3 12h15a2.5 2.5 0 1 1-2.5 2.5M3 16h8a2.5 2.5 0 1 1-2.5 2.5"/>`,
+  umbrella:`<path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5H3.5A8.5 8.5 0 0 1 12 3.5ZM12 12v6.5a2 2 0 0 0 4 0"/>`,
+  gauge:`<path d="M4 19a8 8 0 1 1 16 0"/><path d="M12 14l3.5-3.5"/>`,
+  sunrise:`<path d="M12 3v5M9 6l3-3 3 3M4.5 12H3M21 12h-1.5M6 15a6 6 0 0 1 12 0M3 19h18"/>`,
+};
+document.querySelectorAll('[data-ic]').forEach(el=>{el.innerHTML=S(ICONS[el.dataset.ic]||'');});
+
+/* Színes időjárás-ikonok (aktuális + előrejelzés) */
+const WX_SUN='#ffce3a',WX_CLOUD='#9fb0c0',WX_RAIN='#4f9dff';
+const wxsvg=(inner,s)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const WXP={
+  sun:`<g stroke="${WX_SUN}"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/></g>`,
+  partly:`<g stroke="${WX_SUN}"><circle cx="9" cy="9" r="3.1"/><path d="M9 2.6V4M2.6 9H4M4.4 4.4l1 1M13.6 4.4l-1 1"/></g><path d="M8 18h9a3 3 0 0 0 0-6 4.2 4.2 0 0 0-8-1.2" stroke="${WX_CLOUD}"/>`,
+  cloud:`<path d="M7 18h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 18Z" stroke="${WX_CLOUD}"/>`,
+  rain:`<path d="M7 14h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 14Z" stroke="${WX_CLOUD}"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2" stroke="${WX_RAIN}"/>`,
+};
+document.querySelectorAll('[data-ic="partly"],[data-ic="rain"]').forEach(el=>{
+  const k=el.dataset.ic, s=+el.dataset.sz||40; el.innerHTML=wxsvg(WXP[k],s);
+});
+document.querySelectorAll('[data-fic]').forEach(el=>{el.innerHTML=wxsvg(WXP[el.dataset.fic],26);});
+
+/* Előrejelzés-sorok (data-fc = napok száma; méret szerint 3 vagy 7) */
+const FC=[['Sze','sun',24,14],['Csü','partly',23,13],['Pén','rain',19,12],['Szo','cloud',20,11],['Vas','sun',25,14],['Hét','partly',22,13],['Ked','rain',18,10]];
+document.querySelectorAll('[data-fc]').forEach(el=>{const n=+el.dataset.fc;
+  el.innerHTML=FC.slice(0,n).map(d=>`<div class="day"><div class="dd">${d[0]}</div>${wxsvg(WXP[d[1]],22)}<div><span class="hi">${d[2]}°</span><span class="lo">${d[3]}°</span></div></div>`).join('');});
+
+/* Vízszintes csúszka-sorok (data-hn = eszközök száma) */
+const HN=['Nappali','Konyha','Étkező','Dolgozó','Háló','Előszoba','Fürdő','Kamra'];
+const HV=[80,35,60,100,45,70,25,55];
+document.querySelectorAll('[data-hn]').forEach(el=>{const n=+el.dataset.hn,f=el.dataset.fill||'amberfill';
+  el.innerHTML=Array.from({length:n},(_,i)=>`<div class="slrow"><div class="l"><span class="nm">${HN[i%HN.length]}</span><span class="pc">${HV[i%HV.length]}%</span></div><div class="trk"><div class="f ${f}" style="width:${HV[i%HV.length]}%"><span class="g"></span></div></div></div>`).join('');});
+
+/* Függőleges csúszka-oszlopok (data-vn = eszközök száma) */
+const VI=[
+ ['tealfill-v','ic-teal','speaker-sm','Hangerő',45],
+ ['amberfill-v','ic-amber','bulb-sm','Nappali',80],
+ ['amberfill-v','ic-amber','bulb-sm','Dolgozó',100],
+ ['bluefill-v','ic-blue','blind-sm','Redőny',20],
+ ['amberfill-v','ic-amber','bulb-sm','Konyha',60],
+ ['tealfill-v','ic-teal','speaker-sm','Konyha h.',30],
+ ['bluefill-v','ic-blue','blind-sm','Háló',40],
+ ['amberfill-v','ic-amber','bulb-sm','Fürdő',55],
+];
+document.querySelectorAll('[data-vn]').forEach(el=>{const n=+el.dataset.vn,off=+el.dataset.off||0;
+  el.innerHTML=Array.from({length:n},(_,i)=>{const v=VI[(i+off)%VI.length];
+    return `<div class="vcol"><span class="vv">${v[4]}%</span><div class="vtrk"><div class="vf ${v[0]}" style="height:${v[4]}%"></div><span class="vic ${v[1]}" data-vic="${v[2]}"></span></div><span class="vcap">${v[3]}</span></div>`;}).join('');});
+document.querySelectorAll('.vic[data-vic]').forEach(ic=>{ic.innerHTML=S(ICONS[ic.dataset.vic]);});
+
+/* Rács-vonalak (16 cella) */
+document.querySelectorAll('[data-guides]').forEach(g=>{for(let i=0;i<16;i++)g.appendChild(document.createElement('div'));});
+
+/* Termosztát tick-tárcsa (kicsi és nagy) */
+function makeDial(el){
+  const current=+el.dataset.cur, target=+el.dataset.tgt, min=16,max=30;
+  const cx=100,cy=100,D=x=>x*Math.PI/180,pt=(a,r)=>[cx+r*Math.cos(D(a)),cy+r*Math.sin(D(a))];
+  const N=54,START=125,SWEEP=290,rIn=82,rOut=92,rInHi=78,rOutHi=98;
+  const tf=(target-min)/(max-min),hiAng=START+tf*SWEEP;
+  const line=(a,r1,r2,c,w)=>{const[x1,y1]=pt(a,r1),[x2,y2]=pt(a,r2);return`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;};
+  let t='';for(let i=0;i<=N;i++){const a=START+(i/N)*SWEEP;if(Math.abs(a-hiAng)<SWEEP/N*0.6)continue;t+=line(a,rIn,rOut,'#3d3d47',2);}
+  t+=line(hiAng-1.4,rInHi,rOutHi,'#fff',3.4)+line(hiAng+1.4,rInHi,rOutHi,'#fff',3.4);
+  const pIn=74,pOut=97;
+  const sec=(a0,a1)=>{const[x1,y1]=pt(a0,pOut),[x2,y2]=pt(a1,pOut),[x3,y3]=pt(a1,pIn),[x4,y4]=pt(a0,pIn);return`M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${pOut} ${pOut} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} L ${x3.toFixed(1)} ${y3.toFixed(1)} A ${pIn} ${pIn} 0 0 0 ${x4.toFixed(1)} ${y4.toFixed(1)} Z`;};
+  const chev=(a,dir)=>{const[x,y]=pt(a,(pIn+pOut)/2);const d=dir==='up'?'M -5 3 L 0 -3 L 5 3':'M -5 -3 L 0 3 L 5 -3';return`<path d="${d}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="#e7e7ec" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;};
+  const btn=(a0,a1,dir)=>`<path d="${sec(a0,a1)}" fill="#34343c" stroke="#34343c" stroke-width="6" stroke-linejoin="round"/>${chev((a0+a1)/2,dir)}`;
+  el.innerHTML=`<svg viewBox="0 0 200 200">${t}${btn(93,122,'down')}${btn(58,87,'up')}</svg>
+    <div class="center"><div class="big">${current.toFixed(1)}°</div><div class="small">${target.toFixed(1)}°</div></div>`;
+}
+document.querySelectorAll('.needdial').forEach(makeDial);
+
+/* ---- Könnyű inline-SVG grafikonok (nincs külső lib; gyenge eszközre optimalizált) ---- */
+const PAL=['#ffb84d','#37d3b0','#4c8dff','#b39cff','#ff7a89','#7ed957','#ffd23f','#4fd1ff'];
+const HL='#5fd67f';                       // kiemelt szegmens (élénkzöld)
+function hatchDefs(id){                     // átlós sraffozás (sűrű)
+  return `<defs><pattern id="${id}" patternUnits="userSpaceOnUse" width="4.5" height="4.5" patternTransform="rotate(45)"><rect width="4.5" height="4.5" fill="#2b5245"/><line x1="0" y1="0" x2="0" y2="4.5" stroke="#4f9575" stroke-width="1.7"/></pattern></defs>`;
+}
+let _cid=0;               // egyedi pattern-id-hez
+function donutSVG(vals,opt={}){
+  const S=200, hl=opt.highlight??0, thick=S*0.12, r=S/2-thick/2-S*0.05, cx=S/2,cy=S/2,C=2*Math.PI*r,sum=vals.reduce((a,b)=>a+b,0);
+  const gap=C*0.014, id='h'+(_cid++);
+  let off=0,segs='';
+  vals.forEach((v,i)=>{const len=C*v/sum, draw=Math.max(0.6,len-gap), stroke=i===hl?HL:`url(#${id})`;
+    segs+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="${thick}" stroke-dasharray="${draw.toFixed(2)} ${(C-draw).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    off+=len;});
+  const track=`<circle cx="${cx}" cy="${cy}" r="${S/2-2}" fill="none" stroke="#24242d" stroke-width="3"/>`;
+  let ct='';
+  if(opt.full){
+    ct=`<text x="${cx}" y="${cy-S*0.12}" text-anchor="middle" fill="#6fd98c" font-size="${(S*0.072).toFixed(1)}" font-weight="600">${opt.sublabel||''}</text>
+        <text x="${cx}" y="${cy-S*0.02}" text-anchor="middle" dominant-baseline="middle" fill="#6fd98c" font-size="${(S*0.135).toFixed(1)}" font-weight="800">${opt.subvalue||''}</text>
+        <line x1="${cx-S*0.12}" y1="${cy+S*0.055}" x2="${cx+S*0.12}" y2="${cy+S*0.055}" stroke="#3a3a42" stroke-width="1.1"/>
+        <text x="${cx}" y="${cy+S*0.11}" text-anchor="middle" fill="#8a8a94" font-size="${(S*0.055).toFixed(1)}">total</text>
+        <text x="${cx}" y="${cy+S*0.20}" text-anchor="middle" dominant-baseline="middle" fill="#fff" font-size="${(S*0.10).toFixed(1)}" font-weight="800">${opt.total||''}</text>`;
+  } else if(opt.center){
+    ct=`<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="${(S*0.14).toFixed(1)}" font-weight="700">${opt.center}</text>`;
+  }
+  return `<svg viewBox="0 0 ${S} ${S}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${hatchDefs(id)}${track}${segs}${ct}</svg>`;
+}
+function pieSVG(vals,opt={}){
+  const S=200, hl=opt.highlight??0, r=S/2-3,cx=S/2,cy=S/2,sum=vals.reduce((a,b)=>a+b,0),id='hp'+(_cid++);
+  const gapA=0.03; let a0=-Math.PI/2,p='';
+  vals.forEach((v,i)=>{const span=2*Math.PI*v/sum,s=a0+gapA/2,e=a0+span-gapA/2,
+    x0=cx+r*Math.cos(s),y0=cy+r*Math.sin(s),x1=cx+r*Math.cos(e),y1=cy+r*Math.sin(e),lg=(e-s)>Math.PI?1:0,fill=i===hl?HL:`url(#${id})`;
+    p+=`<path d="M ${cx} ${cy} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${lg} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z" fill="${fill}"/>`;a0+=span;});
+  return `<svg viewBox="0 0 ${S} ${S}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">${hatchDefs(id)}${p}</svg>`;
+}
+function monoLegend(labels,vals,unit,hl){
+  return `<div class="chleg">`+labels.map((l,i)=>`<div class="li${i===hl?' hl':''}">${l}<b>${vals[i]}${unit}</b></div>`).join('')+`</div>`;
+}
+function lineSVG(series,{axis=false,fill=false}={}){
+  const W=100,H=100,all=series.flat(),max=Math.max(...all),min=Math.min(...all),pt=5,pb=5,n=series[0].length;
+  const X=i=>(i/(n-1))*W,Y=v=>{const t=(v-min)/((max-min)||1);return H-pb-t*(H-pt-pb);};
+  let g='';
+  if(axis)for(let k=0;k<=3;k++){const y=(pt+k*(H-pt-pb)/3).toFixed(1);g+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#2a2a30" stroke-width="1" vector-effect="non-scaling-stroke"/>`;}
+  let paths='';
+  series.forEach((s,si)=>{const pts=s.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+    if(fill)paths+=`<polygon points="0,${H} ${pts} ${W},${H}" fill="${PAL[si%PAL.length]}" opacity="0.16"/>`;
+    paths+=`<polyline points="${pts}" fill="none" stroke="${PAL[si%PAL.length]}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;});
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none">${g}${paths}</svg>`;
+}
+function legendHTML(labels,colors,values,row){
+  return `<div class="chleg${row?' row':''}">`+labels.map((l,i)=>`<div class="li"><span class="dot" style="background:${colors[i]}"></span>${l}${values?`<b>${values[i]}</b>`:''}</div>`).join('')+`</div>`;
+}
+document.querySelectorAll('[data-chart]').forEach(el=>{
+  const type=el.dataset.chart;
+  if(type==='line'){
+    const series=el.dataset.series.split(';').map(s=>s.split(',').map(Number));
+    el.innerHTML=`<div class="lcbox">${lineSVG(series,{axis:el.dataset.axis==='1',fill:el.dataset.fill==='1'})}</div>`
+      +(el.dataset.legend?legendHTML(el.dataset.labels.split(','),series.map((_,i)=>PAL[i%PAL.length]),null,true):'');
+    return;
+  }
+  const vals=el.dataset.vals.split(',').map(Number),hl=+(el.dataset.highlight||0);
+  if(type==='pie'){ el.innerHTML=pieSVG(vals,{highlight:hl}); return; }
+  const opt={highlight:hl};
+  if(el.dataset.full==='1'){opt.full=true;opt.sublabel=el.dataset.hlLabel;opt.subvalue=el.dataset.hlValue;opt.total=el.dataset.total;}
+  else opt.center=el.dataset.center||'';
+  const svg=donutSVG(vals,opt);
+  if(el.dataset.legend){
+    el.classList.add('row');
+    el.innerHTML=`<div class="chsvg">${svg}</div>`+monoLegend(el.dataset.labels.split(','),vals,el.dataset.unit||'',hl);
+  } else el.innerHTML=svg;
+});
+
+/* Lapozó — csak konkrét oldalon áll meg */
+(function(){
+  const pager=document.getElementById('pager'),pc=document.getElementById('pc');
+  const N=pager.children.length,W=480;document.getElementById('pt').textContent=N;
+  let idx=0,curTX=0,startX=0,startTX=0,drag=false;
+  const setTX=x=>{curTX=x;pager.style.transform=`translateX(${x}px)`;};
+  function go(i){idx=Math.max(0,Math.min(N-1,i));pager.classList.add('animate');setTX(-idx*W);pc.textContent=idx+1;}
+  pager.addEventListener('pointerdown',e=>{drag=true;startX=e.clientX;startTX=curTX;pager.classList.remove('animate');try{pager.setPointerCapture(e.pointerId);}catch(_){}});
+  pager.addEventListener('pointermove',e=>{if(!drag)return;let x=startTX+(e.clientX-startX);const min=-(N-1)*W;if(x>0)x*=0.3;if(x<min)x=min+(x-min)*0.3;setTX(x);});
+  const end=e=>{if(!drag)return;drag=false;const dx=(e.clientX??startX)-startX,th=W*0.18;if(dx<=-th)go(idx+1);else if(dx>=th)go(idx-1);else go(idx);};
+  pager.addEventListener('pointerup',end);pager.addEventListener('pointercancel',()=>{drag=false;go(idx);});
+  window.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(idx+1);if(e.key==='ArrowLeft')go(idx-1);});
+  window.__go=go;go(0);
+})();
+</script>
+</body>
+</html>

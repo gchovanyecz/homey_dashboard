@@ -1,0 +1,128 @@
+/* ============================================================
+   Homey Dashboard — design system (NSPanel Pro 480x480)
+   A mockup vizuáljából származó tokenek.
+   ============================================================ */
+:root {
+  --bg: #0c0c0e;
+  --card: #1b1b1f;
+  --card-2: #232329;
+  --line: #2f2f36;
+  --txt: #f4f4f6;
+  --txt-dim: #9a9aa4;
+  --txt-mute: #6c6c76;
+
+  --amber: #ffb84d;
+  --amber-soft: rgba(255, 184, 77, 0.16);
+  --blue: #4c8dff;
+  --blue-soft: rgba(76, 141, 255, 0.16);
+  --teal: #37d3b0;
+  --heat: #ff7a59;
+  --chart-hl: #5fd67f;
+
+  --radius: 20px;
+  --gap: 10px;
+
+  /* panel + rács — az App.svelte felülírja az aktív dashboard profiljából */
+  --panel-w: 480px;
+  --panel-h: 480px;
+  --grid-cols: 4;
+  --grid-rows: 4;
+  --page-pad: 10px;
+
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  /* kioszk: ne lehessen szöveget kijelölni / long-press menüt kapni */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: var(--txt);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* beviteli mezőkben legyen kijelölhető/szerkeszthető a szöveg */
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* A panel mérete a dashboard panel-profiljából jön (NSPanel Pro 86: 480×480,
+   Pro 120: 480×854 álló / 854×480 fekvő); asztali nézetben középre igazítva. */
+.frame {
+  position: relative;
+  width: var(--panel-w);
+  height: var(--panel-h);
+  margin: 0 auto;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* ---- Oldal (egy 4x4-es rács) ---- */
+.page {
+  /* A .pager transzformált (translateX + will-change), ezért ő a befoglaló doboz
+     MINDEN benne lévő position:fixed elemnek is. A lap-szintű overlayek (pl. a
+     termosztát popupja) ezért nem fixed-ek, hanem ehhez a laphoz igazodnak —
+     így a saját lapjuk fölött nyílnak, nem az elsőn. */
+  position: relative;
+  flex: 0 0 var(--panel-w);
+  width: var(--panel-w);
+  height: var(--panel-h);
+  padding: var(--page-pad);
+  overflow: hidden;
+}
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 6px;
+}
+.page-head h1 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.page-head .clock {
+  font-size: 13px;
+  color: var(--txt-dim);
+  font-variant-numeric: tabular-nums;
+}
+.page-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols), 1fr);
+  grid-template-rows: repeat(var(--grid-rows), 1fr);
+  gap: var(--gap);
+  height: 100%;
+  min-height: 0;
+}
+/* ha van fejléc, a rács a maradék helyet kapja */
+.page.has-head .page-grid {
+  height: calc(100% - 27px);
+}
+.cell {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}

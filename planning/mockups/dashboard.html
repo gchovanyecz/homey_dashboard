@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=480, height=480, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Homey Dashboard — NSPanel Pro mockup</title>
+<style>
+  :root{
+    --bg:#0c0c0e;
+    --card:#1b1b1f;
+    --card-2:#232329;
+    --line:#2f2f36;
+    --txt:#f4f4f6;
+    --txt-dim:#9a9aa4;
+    --txt-mute:#6c6c76;
+    --amber:#ffb84d;      /* világítás aktív */
+    --amber-soft:rgba(255,184,77,.16);
+    --blue:#4c8dff;       /* aktív toggle / hűtés */
+    --blue-soft:rgba(76,141,255,.16);
+    --teal:#37d3b0;       /* Homey accent */
+    --heat:#ff7a59;       /* fűtés */
+    --heat-soft:rgba(255,122,89,.16);
+    --radius:20px;
+    --gap:10px;
+    font-synthesis:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    width:480px;height:480px;overflow:hidden;background:#000;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--txt);
+  }
+  .frame{position:relative;width:480px;height:480px;background:var(--bg);overflow:hidden}
+  .pager{
+    display:flex;width:480px;height:480px;
+    touch-action:pan-y;will-change:transform;transform:translateX(0);
+  }
+  .pager.animate{transition:transform .34s cubic-bezier(.22,.61,.36,1)}
+  .page{
+    flex:0 0 480px;width:480px;height:480px;
+    padding:14px 14px 20px;display:flex;flex-direction:column;gap:var(--gap);
+    overflow:hidden;
+  }
+
+  .page-title{display:flex;align-items:center;justify-content:space-between;padding:0 2px 2px}
+  .page-title h1{font-size:15px;font-weight:600;letter-spacing:.2px;color:var(--txt)}
+  .page-title .clock{font-size:13px;color:var(--txt-dim);font-variant-numeric:tabular-nums}
+
+  .row{display:flex;gap:var(--gap)}
+  .row>*{flex:1}
+  .card{background:var(--card);border-radius:var(--radius);border:1px solid var(--line)}
+
+  /* ---------- Weather ---------- */
+  .weather{padding:14px 16px}
+  .wx-top{display:flex;justify-content:space-between;align-items:flex-start}
+  .wx-temp{font-size:44px;font-weight:300;line-height:1;letter-spacing:-1px}
+  .wx-cond{font-size:13px;color:var(--txt-dim);margin-top:5px}
+  .wx-loc{font-size:12px;color:var(--txt-mute);margin-top:2px}
+  .wx-hero{margin-top:-2px}
+  .wx-forecast{display:flex;gap:6px;margin-top:12px}
+  .wx-day{flex:1;background:var(--card-2);border-radius:14px;padding:8px 4px;text-align:center}
+  .wx-day .d{font-size:11px;color:var(--txt-dim);text-transform:uppercase;letter-spacing:.5px}
+  .wx-day svg{margin:6px auto 4px;display:block}
+  .wx-day .hi{font-size:14px;font-weight:600}
+  .wx-day .lo{font-size:12px;color:var(--txt-mute);margin-left:3px}
+
+  /* ---------- Button tile ---------- */
+  .tile{
+    background:var(--card);border-radius:var(--radius);border:1px solid var(--line);
+    padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-height:82px;justify-content:space-between;
+    position:relative;overflow:hidden;
+  }
+  .tile .ic{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    background:var(--card-2);color:var(--txt-dim)}
+  .tile .lbl{font-size:15px;font-weight:600}
+  .tile .sub{font-size:12px;color:var(--txt-mute)}
+  .tile.on{background:linear-gradient(160deg,#2a2418,#1f1c17);border-color:rgba(255,184,77,.35)}
+  .tile.on .ic{background:var(--amber-soft);color:var(--amber);box-shadow:0 0 20px var(--amber-soft)}
+  .tile.on .sub{color:var(--amber)}
+  .tile.flow .ic{background:var(--blue-soft);color:var(--blue)}
+  .tile.on-blue{background:linear-gradient(160deg,#182130,#171b22);border-color:rgba(76,141,255,.35)}
+  .tile.on-blue .ic{background:var(--blue-soft);color:var(--blue)}
+  .tile.on-blue .sub{color:var(--blue)}
+
+  /* ---------- Sliders ---------- */
+  .slider-v{
+    background:var(--card);border-radius:var(--radius);border:1px solid var(--line);
+    padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  }
+  .track-v{position:relative;width:52px;flex:1;min-height:96px;border-radius:16px;background:var(--card-2);overflow:hidden}
+  .fill-v{position:absolute;left:0;right:0;bottom:0;border-radius:16px}
+  .slider-v .val{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+  .slider-v .cap{font-size:11px;color:var(--txt-mute)}
+  .track-v .knob-ic{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;z-index:2}
+
+  .slider-h{
+    background:var(--card);border-radius:var(--radius);border:1px solid var(--line);
+    padding:11px 14px;display:flex;flex-direction:column;gap:8px;
+  }
+  .slider-h .head{display:flex;align-items:center;justify-content:space-between}
+  .slider-h .head .name{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+  .slider-h .head .pct{font-size:14px;color:var(--txt-dim);font-variant-numeric:tabular-nums}
+  .track-h{position:relative;height:40px;border-radius:14px;background:var(--card-2);overflow:hidden}
+  .fill-h{position:absolute;left:0;top:0;bottom:0;border-radius:14px;display:flex;align-items:center;justify-content:flex-end}
+  .fill-h .grip{width:4px;height:22px;border-radius:2px;background:rgba(255,255,255,.85);margin-right:10px}
+  .amberfill{background:linear-gradient(90deg,#8a5a12,var(--amber))}
+  .amberfill-v{background:linear-gradient(0deg,#8a5a12,var(--amber))}
+  .bluefill{background:linear-gradient(90deg,#254a86,var(--blue))}
+  .bluefill-v{background:linear-gradient(0deg,#254a86,var(--blue))}
+  .tealfill{background:linear-gradient(90deg,#1c6f5e,var(--teal))}
+  .tealfill-v{background:linear-gradient(0deg,#1c6f5e,var(--teal))}
+  .ic-amber{color:var(--amber)}.ic-blue{color:var(--blue)}.ic-teal{color:var(--teal)}
+  .hint{font-size:11px;color:var(--txt-mute)}
+
+  /* ---------- Slider group (több azonos típusú csúszka) ---------- */
+  .group{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);padding:9px 13px 10px}
+  .ghead{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+  .gtitle{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600}
+  .ghint{font-size:11px;color:var(--txt-mute)}
+  .slrow{display:flex;flex-direction:column;gap:4px;margin-top:7px}
+  .slrow:first-of-type{margin-top:0}
+  .slrow .l{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+  .slrow .l .nm{color:var(--txt-dim)}
+  .slrow .l .pc{color:var(--txt);font-variant-numeric:tabular-nums}
+  .trk{position:relative;height:20px;border-radius:7px;background:var(--card-2);overflow:hidden}
+  .trk .f{position:absolute;left:0;top:0;bottom:0;border-radius:7px;display:flex;align-items:center;justify-content:flex-end}
+  .trk .f .g{width:3px;height:11px;border-radius:2px;background:rgba(255,255,255,.9);margin-right:7px}
+
+  /* vertikális csoport — keskeny csúszkák egymás mellett */
+  .vgroup{background:var(--card);border-radius:var(--radius);border:1px solid var(--line);
+    padding:9px 13px 9px;display:flex;flex-direction:column}
+  .vlist{display:flex;gap:9px;flex:1;margin-top:5px}
+  .vcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
+  .vcol .vv{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+  .vtrk{position:relative;width:32px;flex:1;min-height:44px;border-radius:11px;background:var(--card-2);overflow:hidden}
+  .vtrk .vf{position:absolute;left:0;right:0;bottom:0;border-radius:12px}
+  .vtrk .vic{position:absolute;left:50%;transform:translateX(-50%);bottom:7px}
+  .vcol .vcap{font-size:10px;color:var(--txt-mute);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gtitle svg{width:18px;height:18px}
+  .vtrk .vic svg{width:18px;height:18px}
+
+  /* ---------- Thermostat ---------- */
+  .thermo{
+    background:var(--card);border-radius:var(--radius);border:1px solid var(--line);
+    padding:8px;display:flex;align-items:center;justify-content:center;position:relative;
+  }
+  .dial{position:relative;width:178px;height:178px}
+  .dial svg.ticks{width:100%;height:100%;display:block;overflow:visible}
+  .dial .center{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;pointer-events:none;
+    transform:translateY(-6px)}
+  .dial .big{font-size:40px;font-weight:700;line-height:1;letter-spacing:-1px;color:#fff}
+  .dial .small{font-size:17px;font-weight:700;color:#bdbdc6;margin-top:8px;letter-spacing:-.2px}
+  .dial .pill-btn{cursor:pointer}
+  .dial .pill-btn:active .seg{fill:#41414a}
+
+  /* ---------- Dots ---------- */
+  .dots{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:7px;pointer-events:none}
+  .dots i{width:6px;height:6px;border-radius:50%;background:#3a3a42;transition:.2s}
+  .dots i.active{background:var(--txt);width:18px;border-radius:3px}
+
+  .sec-label{font-size:12px;color:var(--txt-mute);padding:2px 2px 0;letter-spacing:.4px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="pager" id="pager">
+
+    <!-- ============ PAGE 1: Áttekintés ============ -->
+    <section class="page">
+      <div class="page-title"><h1>Áttekintés</h1><span class="clock">21:40</span></div>
+
+      <!-- Weather -->
+      <div class="card weather">
+        <div class="wx-top">
+          <div>
+            <div class="wx-temp">21°</div>
+            <div class="wx-cond">Részben felhős</div>
+            <div class="wx-loc">Budapest</div>
+          </div>
+          <div class="wx-hero" id="ic-partly"></div>
+        </div>
+        <div class="wx-forecast">
+          <div class="wx-day"><div class="d">Sze</div><span class="mini" data-ic="sun"></span><div><span class="hi">24°</span><span class="lo">14°</span></div></div>
+          <div class="wx-day"><div class="d">Csü</div><span class="mini" data-ic="partly"></span><div><span class="hi">23°</span><span class="lo">13°</span></div></div>
+          <div class="wx-day"><div class="d">Pén</div><span class="mini" data-ic="rain"></span><div><span class="hi">19°</span><span class="lo">12°</span></div></div>
+          <div class="wx-day"><div class="d">Szo</div><span class="mini" data-ic="cloud"></span><div><span class="hi">20°</span><span class="lo">11°</span></div></div>
+        </div>
+      </div>
+
+      <!-- Thermostat (tick-scale dial) -->
+      <div class="thermo" style="flex:1">
+        <div class="dial" id="dial"></div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 2: Vezérlők ============ -->
+    <section class="page">
+      <div class="page-title"><h1>Vezérlők</h1><span class="clock">21:40</span></div>
+
+      <!-- Csoport: Világítás (több azonos típusú csúszka egy kártyában) -->
+      <div class="group">
+        <div class="ghead">
+          <div class="gtitle"><span class="ic-amber" data-ic="bulb-sm"></span> Világítás</div>
+          <div class="ghint">húzás közben küld</div>
+        </div>
+        <div class="slrow"><div class="l"><span class="nm">Nappali</span><span class="pc">80%</span></div>
+          <div class="trk"><div class="f amberfill" style="width:80%"><span class="g"></span></div></div></div>
+        <div class="slrow"><div class="l"><span class="nm">Konyha</span><span class="pc">35%</span></div>
+          <div class="trk"><div class="f amberfill" style="width:35%"><span class="g"></span></div></div></div>
+      </div>
+
+      <!-- Csoport: Árnyékolás -->
+      <div class="group">
+        <div class="ghead">
+          <div class="gtitle"><span class="ic-blue" data-ic="blind-sm"></span> Árnyékolás</div>
+          <div class="ghint">csak elengedéskor küld</div>
+        </div>
+        <div class="slrow"><div class="l"><span class="nm">Nappali redőny</span><span class="pc">60%</span></div>
+          <div class="trk"><div class="f bluefill" style="width:60%"><span class="g"></span></div></div></div>
+        <div class="slrow"><div class="l"><span class="nm">Háló redőny</span><span class="pc">40%</span></div>
+          <div class="trk"><div class="f bluefill" style="width:40%"><span class="g"></span></div></div></div>
+      </div>
+
+      <!-- Csoport: Hangerő -->
+      <div class="group">
+        <div class="ghead">
+          <div class="gtitle"><span class="ic-teal" data-ic="speaker-sm"></span> Hangerő</div>
+          <div class="ghint">húzás közben küld</div>
+        </div>
+        <div class="slrow"><div class="l"><span class="nm">Nappali hangfal</span><span class="pc">45%</span></div>
+          <div class="trk"><div class="f tealfill" style="width:45%"><span class="g"></span></div></div></div>
+        <div class="slrow"><div class="l"><span class="nm">Konyha hangfal</span><span class="pc">30%</span></div>
+          <div class="trk"><div class="f tealfill" style="width:30%"><span class="g"></span></div></div></div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 3: Gyorsvezérlők (vertikális csúszkák) ============ -->
+    <section class="page">
+      <div class="page-title"><h1>Gyorsvezérlők</h1><span class="clock">21:40</span></div>
+      <div class="vgroup" style="flex:1">
+        <div class="vlist">
+          <div class="vcol"><span class="vv">45%</span>
+            <div class="vtrk"><div class="vf tealfill-v" style="height:45%"></div><span class="vic ic-teal" data-ic="speaker-sm"></span></div>
+            <span class="vcap">Hangerő</span></div>
+          <div class="vcol"><span class="vv">80%</span>
+            <div class="vtrk"><div class="vf amberfill-v" style="height:80%"></div><span class="vic ic-amber" data-ic="bulb-sm"></span></div>
+            <span class="vcap">Nappali</span></div>
+          <div class="vcol"><span class="vv">100%</span>
+            <div class="vtrk"><div class="vf amberfill-v" style="height:100%"></div><span class="vic ic-amber" data-ic="bulb-sm"></span></div>
+            <span class="vcap">Dolgozó</span></div>
+          <div class="vcol"><span class="vv">60%</span>
+            <div class="vtrk"><div class="vf amberfill-v" style="height:60%"></div><span class="vic ic-amber" data-ic="bulb-sm"></span></div>
+            <span class="vcap">Konyha</span></div>
+          <div class="vcol"><span class="vv">40%</span>
+            <div class="vtrk"><div class="vf bluefill-v" style="height:40%"></div><span class="vic ic-blue" data-ic="blind-sm"></span></div>
+            <span class="vcap">Háló</span></div>
+          <div class="vcol"><span class="vv">20%</span>
+            <div class="vtrk"><div class="vf bluefill-v" style="height:20%"></div><span class="vic ic-blue" data-ic="blind-sm"></span></div>
+            <span class="vcap">Redőny</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 4: Gombok & Flow-k ============ -->
+    <section class="page">
+      <div class="page-title"><h1>Gombok &amp; Flow-k</h1><span class="clock">21:40</span></div>
+
+      <div class="row">
+        <div class="tile flow"><div class="ic" data-ic="flow"></div><div><div class="lbl">Jó éjt</div><div class="sub">Flow indítása</div></div></div>
+        <div class="tile flow"><div class="ic" data-ic="movie"></div><div><div class="lbl">Mozi mód</div><div class="sub">Flow indítása</div></div></div>
+      </div>
+      <div class="row">
+        <div class="tile on"><div class="ic" data-ic="bulb"></div><div><div class="lbl">Összes lámpa</div><div class="sub">Bekapcsolva</div></div></div>
+        <div class="tile on-blue"><div class="ic" data-ic="lock"></div><div><div class="lbl">Bejárat</div><div class="sub">Zárva</div></div></div>
+      </div>
+      <div class="row">
+        <div class="tile"><div class="ic" data-ic="fan"></div><div><div class="lbl">Ventilátor</div><div class="sub">Kikapcsolva</div></div></div>
+        <div class="tile flow"><div class="ic" data-ic="coffee"></div><div><div class="lbl">Kávé</div><div class="sub">Flow indítása</div></div></div>
+      </div>
+      <div class="row">
+        <div class="tile on-blue"><div class="ic" data-ic="power"></div><div><div class="lbl">Konnektor</div><div class="sub">Bekapcsolva</div></div></div>
+        <div class="tile flow"><div class="ic" data-ic="away"></div><div><div class="lbl">Távozás</div><div class="sub">Flow indítása</div></div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="dots" id="dots"><i class="active"></i><i></i><i></i><i></i></div>
+</div>
+
+<script>
+/* ---- Inline SVG ikonok (offline-barát, nincs CDN) ---- */
+const S = (p,{w=24,h=24,sw=1.8,fill='none'}={})=>`<svg width="${w}" height="${h}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICONS = {
+  sun:`<circle cx="12" cy="12" r="4.2"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/>`,
+  partly:`<circle cx="9" cy="9" r="3.2"/><path d="M9 2.5V4M2.5 9H4M4.3 4.3l1 1M13.7 4.3l-1 1"/><path d="M8 18h9a3 3 0 0 0 0-6 4.2 4.2 0 0 0-8-1.2"/>`,
+  cloud:`<path d="M7 18h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 18Z"/>`,
+  rain:`<path d="M7 14h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 14Z"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2"/>`,
+  bulb:`<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2H14.5c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3Z"/>`,
+  'bulb-sm':`<path d="M9.5 18.5h5M10.5 21h3"/><path d="M12 4a5 5 0 0 0-3 9c.5.4.8 1 .9 1.6h4.2c.1-.6.4-1.2.9-1.6A5 5 0 0 0 12 4Z"/>`,
+  tv:`<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/>`,
+  speaker:`<rect x="7" y="3" width="10" height="18" rx="2.5"/><circle cx="12" cy="14" r="3"/><circle cx="12" cy="7" r="1"/>`,
+  'speaker-sm':`<rect x="8" y="4" width="8" height="16" rx="2"/><circle cx="12" cy="13" r="2.4"/><circle cx="12" cy="7.5" r=".9"/>`,
+  blind:`<rect x="4" y="4" width="16" height="4" rx="1"/><path d="M6 8v8M18 8v8M12 8v6M8 12h8M8 16h8"/>`,
+  'blind-sm':`<rect x="5" y="4" width="14" height="3.5" rx="1"/><path d="M12 8v6M7.5 12h9M7.5 15.5h9"/>`,
+  flow:`<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/><path d="M8.2 6H14a3 3 0 0 1 3 3v6.5"/>`,
+  movie:`<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M8 6l-2 4M13 6l-2 4M18 6l-2 4"/>`,
+  lock:`<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>`,
+  fan:`<circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c0-3 .4-5.4-1.5-6.2C8.2 3.3 7 6 8.5 8.2M13.6 12c3 0 5.4.4 6.2-1.5.9-2.3-1.8-3.5-4-2M12 13.6c0 3-.4 5.4 1.5 6.2 2.3.9 3.5-1.8 2-4"/>`,
+  coffee:`<path d="M5 9h11v4a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5Z"/><path d="M16 10h2a2.5 2.5 0 0 1 0 5h-2M8 3v2M11 3v2"/>`,
+  away:`<path d="M14 21V5a2 2 0 0 0-2-2H6v18M14 12h6M17 9l3 3-3 3"/>`,
+  power:`<path d="M12 4v7M7.5 7a7 7 0 1 0 9 0"/>`,
+  sliders:`<path d="M5 6h9M18 6h1M5 12h1M10 12h9M5 18h5M14 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="18" r="2"/>`,
+};
+document.querySelectorAll('[data-ic]').forEach(el=>{el.innerHTML=S(ICONS[el.dataset.ic]||'');});
+/* Aktuális (hero) ikon — szintén kétszínű, kondíció szerint (részben felhős: arany nap + szürke felhő) */
+document.getElementById('ic-partly').innerHTML=`<svg width="66" height="66" viewBox="0 0 24 24" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g stroke="#ffce3a"><circle cx="9" cy="9" r="3.4"/><path d="M9 2.2V3.8M2.2 9H3.8M4.2 4.2l1.1 1.1M13.8 4.2l-1.1 1.1"/></g><path d="M8 18.6h9a3.2 3.2 0 0 0 0-6.4 4.4 4.4 0 0 0-8.4-1.2A3.2 3.2 0 0 0 8 18.6Z" stroke="#9fb0c0"/></svg>`;
+/* Előrejelzés-ikonok: kondíció szerint SZÍNES (csak az ikon), kétszínű ahol van értelme */
+const WX_SUN='#ffce3a', WX_CLOUD='#9fb0c0', WX_RAIN='#4f9dff', WX_SNOW='#bfe6ff', WX_BOLT='#b39cff';
+const wxsvg=inner=>`<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+const WXI={
+  sun: wxsvg(`<g stroke="${WX_SUN}"><circle cx="12" cy="12" r="4.2"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/></g>`),
+  partly: wxsvg(`<g stroke="${WX_SUN}"><circle cx="9" cy="9" r="3.1"/><path d="M9 2.6V4M2.6 9H4M4.4 4.4l1 1M13.6 4.4l-1 1"/></g><path d="M8 18h9a3 3 0 0 0 0-6 4.2 4.2 0 0 0-8-1.2" stroke="${WX_CLOUD}"/>`),
+  cloud: wxsvg(`<path d="M7 18h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 18Z" stroke="${WX_CLOUD}"/>`),
+  rain: wxsvg(`<path d="M7 14h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 14Z" stroke="${WX_CLOUD}"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2" stroke="${WX_RAIN}"/>`),
+  snow: wxsvg(`<path d="M7 14h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 14Z" stroke="${WX_CLOUD}"/><path d="M9 18v.01M12 19v.01M15 18v.01M10.5 21v.01M13.5 21v.01" stroke="${WX_SNOW}"/>`),
+  storm: wxsvg(`<path d="M7 13h10a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6-1.3A3.5 3.5 0 0 0 7 13Z" stroke="${WX_CLOUD}"/><path d="M13 14l-3 4h3l-2 3" stroke="${WX_BOLT}"/>`),
+};
+document.querySelectorAll('.mini').forEach(el=>{ el.innerHTML=WXI[el.dataset.ic]||''; el.classList.remove('mini'); });
+
+/* ---- Thermostat: tick-scale dial + ív-követő gombok ---- */
+(function(){
+  const min=16, max=30, current=24.0, target=24.4;    // nagy=mért, kicsi=cél (mock)
+  const cx=100, cy=100;
+  const D=x=>x*Math.PI/180, pt=(a,r)=>[cx+r*Math.cos(D(a)), cy+r*Math.sin(D(a))];
+  const f2=n=>n.toFixed(1);
+
+  // --- rovátkák: körben, ~70° rés lent (55°..125° kihagyva) ---
+  const N=58, START=125, SWEEP=290;                    // 125° -> 415°(=55°) óramutató irányban
+  const rIn=82, rOut=92, rInHi=78, rOutHi=98;
+  const tf=(target-min)/(max-min), hiAng=START + tf*SWEEP;
+  const line=(a,r1,r2,col,w)=>{const [x1,y1]=pt(a,r1),[x2,y2]=pt(a,r2);
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;};
+  let ticks='';
+  for(let i=0;i<=N;i++){const a=START+(i/N)*SWEEP;
+    if(Math.abs(a-hiAng) < SWEEP/N*0.6) continue;
+    ticks += line(a, rIn, rOut, '#3d3d47', 2);}
+  ticks += line(hiAng-1.4, rInHi, rOutHi, '#fff', 3.4);  // kiemelt cél: dupla fehér
+  ticks += line(hiAng+1.4, rInHi, rOutHi, '#fff', 3.4);
+
+  // --- ív-követő gombsáv a rés helyén (90° = lent) ---
+  const pIn=74, pOut=97;                                 // sáv vastagsága
+  const sector=(a0,a1)=>{const [x1,y1]=pt(a0,pOut),[x2,y2]=pt(a1,pOut),[x3,y3]=pt(a1,pIn),[x4,y4]=pt(a0,pIn);
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${pOut} ${pOut} 0 0 1 ${x2.toFixed(1)} ${y2.toFixed(1)} L ${x3.toFixed(1)} ${y3.toFixed(1)} A ${pIn} ${pIn} 0 0 0 ${x4.toFixed(1)} ${y4.toFixed(1)} Z`;};
+  const chevAt=(a,dir)=>{const [x,y]=pt(a,(pIn+pOut)/2);
+    const d = dir==='up' ? `M -5 3 L 0 -3 L 5 3` : `M -5 -3 L 0 3 L 5 -3`;
+    return `<path d="${d}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" fill="none" stroke="#e7e7ec" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;};
+  // jobb gomb (fel/növel): 58°..87°,  bal gomb (le/csökkent): 93°..122°
+  const btn=(a0,a1,dir,lbl)=>`<g class="pill-btn" role="button" aria-label="${lbl}">
+      <path class="seg" d="${sector(a0,a1)}" fill="#34343c" stroke="#34343c" stroke-width="6" stroke-linejoin="round"/>
+      ${chevAt((a0+a1)/2,dir)}</g>`;
+  const pill = btn(93,122,'down','csökkent') + btn(58,87,'up','növel');
+
+  document.getElementById('dial').innerHTML=`
+    <svg class="ticks" viewBox="0 0 200 200">${ticks}${pill}</svg>
+    <div class="center">
+      <div class="big">${f2(current)}°</div>
+      <div class="small">${f2(target)}°</div>
+    </div>`;
+})();
+
+/* ---- Lapozó: húzás-követő, csak konkrét oldalon áll meg ---- */
+(function(){
+  const pager=document.getElementById('pager');
+  const dotBox=document.getElementById('dots');
+  const dots=[...dotBox.children];
+  const N=pager.children.length, W=480;
+  let idx=0, curTX=0, startX=0, startTX=0, drag=false;
+  const setTX=x=>{ curTX=x; pager.style.transform=`translateX(${x}px)`; };
+  const upd=()=>dots.forEach((d,k)=>d.classList.toggle('active',k===idx));
+  function go(i){ idx=Math.max(0,Math.min(N-1,i)); pager.classList.add('animate'); setTX(-idx*W); upd(); }
+
+  pager.addEventListener('pointerdown',e=>{
+    drag=true; startX=e.clientX; startTX=curTX;
+    pager.classList.remove('animate');
+    try{ pager.setPointerCapture(e.pointerId); }catch(_){}
+  });
+  pager.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    let x=startTX+(e.clientX-startX);
+    const min=-(N-1)*W;
+    if(x>0) x*=0.3;                      // gumis szél
+    if(x<min) x=min+(x-min)*0.3;
+    setTX(x);
+  });
+  const end=e=>{
+    if(!drag) return; drag=false;
+    const dx=(e.clientX??startX)-startX, th=W*0.18;   // ~86px küszöb
+    if(dx<=-th) go(idx+1);
+    else if(dx>=th) go(idx-1);
+    else go(idx);                        // vissza a jelenlegire (nincs köztes állapot)
+  };
+  pager.addEventListener('pointerup',end);
+  pager.addEventListener('pointercancel',()=>{ drag=false; go(idx); });
+
+  dotBox.style.pointerEvents='auto';
+  dots.forEach((d,k)=>{ d.style.pointerEvents='auto'; d.style.cursor='pointer'; d.addEventListener('click',()=>go(k)); });
+  window.addEventListener('keydown',e=>{ if(e.key==='ArrowRight')go(idx+1); if(e.key==='ArrowLeft')go(idx-1); });
+
+  window.__go=go;                        // screenshot segéd
+  go(0);
+})();
+</script>
+</body>
+</html>
